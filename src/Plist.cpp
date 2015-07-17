@@ -696,6 +696,24 @@ int countArray(const array_type& array)
 	return count;
 }
 
+#if defined(_MSC_VER)
+void readPlist(const wchar_t* filename, boost::any& message)
+{
+	std::ifstream stream(filename, std::ios::binary);
+	if(!stream)
+		throw Error("Can't open file.");
+	readPlist(stream, message);
+}
+#endif
+
+void readPlist(const char* filename, boost::any& message)
+{
+	std::ifstream stream(filename, std::ios::binary);
+	if(!stream)
+		throw Error("Can't open file.");
+	readPlist(stream, message);
+}
+
 void readPlist(std::istream& stream, boost::any& message)
 {
 	int start = stream.tellg();

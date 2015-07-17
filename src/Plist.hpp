@@ -53,6 +53,7 @@ namespace Plist
 
 		void readPlist(const char* byteArrayTemp, int64_t size, boost::any& message);
 		void readPlist(std::istream& stream, boost::any& message);
+		void readPlist(const char* filename, boost::any& message);
 		template<typename T>
 		void readPlist(const char* byteArray, int64_t size, T& message);
 		template<typename T>
@@ -60,6 +61,7 @@ namespace Plist
 		template<typename T>
 		void readPlist(const char* filename, T& message);
 #if defined(_MSC_VER)
+		void readPlist(const wchar_t* filename, boost::any& message);
 		template<typename T>
 		void readPlist(const wchar_t* filename, T& message);
 #endif
@@ -97,20 +99,18 @@ namespace Plist
 template <typename T>
 void Plist::readPlist(const wchar_t* filename, T& message)
 {
-	std::ifstream stream(filename, std::ios::binary);
-	if(!stream)
-		throw Error("Can't open file.");
-	readPlist(stream, message);
+	boost::any tmp_message;
+	readPlist(filename, tmp_message);
+	message = boost::any_cast<T>(tmp_message);
 }
 #endif
 
 template <typename T>
 void Plist::readPlist(const char* filename, T& message)
 {
-	std::ifstream stream(filename, std::ios::binary);
-	if(!stream)
-		throw Error("Can't open file.");
-	readPlist(stream, message);
+	boost::any tmp_message;
+	readPlist(filename, tmp_message);
+	message = boost::any_cast<T>(tmp_message);
 }
 
 template <typename T>
