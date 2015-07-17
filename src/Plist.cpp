@@ -719,7 +719,7 @@ void readPlist(const char* filename, boost::any& message)
 {
 	std::ifstream stream(filename, std::ios::binary);
 	if(!stream)
-		throw Error("Can't open file.");
+		throw Error("Can't open file: " + std::string(filename));
 	readPlist(stream, message);
 }
 
