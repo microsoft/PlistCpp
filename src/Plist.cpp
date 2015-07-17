@@ -29,6 +29,7 @@
 #include <sstream>
 #include "base64.hpp"
 #include "pugixml.hpp"
+#include "NSPlist.h"
 
 namespace Plist {
 
@@ -151,6 +152,14 @@ namespace Plist {
 			u.x = 0xab0000cd;
 			return u.c[0] == 0xcd;
 		}
+
+		// NextStep parsing
+
+		dictionary_type parseNSDictionary(const NSPlistDictionary* val);
+		array_type parseNSArray(const NSPlistArray* val);
+		data_type parseNSData(const NSPlistData* val);
+		std::string parseNSString(const NSPlistString* val);
+		boost::any parseNS(const NSPlistValue* val);
 
 } // namespace Plist
 
@@ -721,8 +730,11 @@ void readPlist(std::istream& stream, boost::any& message)
 	int size = ((int) stream.tellg()) - start;
 	if(size > 0)
 	{
+		// Make sure buffer is double NULL terminated
+		// but don't report the extra two bytes
 		stream.seekg(0, std::ifstream::beg);
-		std::vector<char> buffer(size);
+		std::vector<char> buffer(size + 2);
+		buffer[size] = buffer[size+1] = '\0';
 		stream.read( (char *)&buffer[0], size );
 
 		readPlist(&buffer[0], size, message);
@@ -733,6 +745,21 @@ void readPlist(std::istream& stream, boost::any& message)
 	}
 }
 
+static std::string getPlistType(const char* data, int64_t size)
+{
+	// Ignore leading whitespace
+	unsigned i = 0;
+	for (; i < size && isspace(data[i]); i++) {}
+
+	// infer plist type from header.
+	if (size >= 8 && !strncmp(&data[i], "bplist00", 8))
+		return "binary";
+	else if (size >= 2 && (!strncmp(&data[i], "<?", 2) || !strncmp(&data[i], "<!", 2)))
+		return "xml";
+	else
+		return "ascii";
+}
+
 void readPlist(const char* byteArrayTemp, int64_t size, boost::any& message)
 {
 	using namespace std;
@@ -740,11 +767,8 @@ void readPlist(const char* byteArrayTemp, int64_t size, boost::any& message)
 	if (!byteArray || (size == 0))
 		throw Error("Plist: Empty plist data");
 
-	// infer plist type from header.  If it has the bplist00 header as first 8
-	// bytes, then it's a binary plist.  Otherwise, assume it's XML
-
-	std::string magicHeader((const char*) byteArray, 8);
-	if(magicHeader == "bplist00")
+	std::string plistType = getPlistType(byteArrayTemp, size);
+	if (plistType == "binary")
 	{
 		PlistHelperData d;
 		parseTrailer(d, getRange(byteArray, size - 32, 32));
@@ -756,7 +780,7 @@ void readPlist(const char* byteArrayTemp, int64_t size, boost::any& message)
 
 		message = parseBinary(d, 0);
 	}
-	else
+	else if (plistType == "xml")
 	{
 		pugi::xml_document doc;
 		pugi::xml_parse_result result = doc.load_buffer(byteArray, (size_t)size);
@@ -766,7 +790,67 @@ void readPlist(const char* byteArrayTemp, int64_t size, boost::any& message)
 		pugi::xml_node rootNode = doc.child("plist").first_child();
 		message = parse(rootNode);
 	}
+	else // (plistType == "ascii")
+	{
+		NSPlistValue* plist;
+		bool result = loadPlistFromBuffer(byteArrayTemp, plist);
+		if (!result)
+			throw Error("Plist: Failed to parse ASCII plist.");
 
+		message = parseNS(plist);
+		delete plist;
+	}
+
+}
+
+boost::any parseNS(const NSPlistValue* value)
+{
+	NSPlistValueType type = value->m_type;
+	if (type == NSPlistStringValue) {
+		return parseNSString(NSPlistString::cast(value));
+	} else if (type == NSPlistArrayValue) {
+		return parseNSArray(NSPlistArray::cast(value));
+	} else if (type == NSPlistDictionaryValue) {
+		return parseNSDictionary(NSPlistDictionary::cast(value));
+	} else if (type == NSPlistDataValue) {
+		return parseNSData(NSPlistData::cast(value));
+	} else {
+		throw Error("Plist: NextStep unknown type.");
+	}
+}
+
+std::string parseNSString(const NSPlistString* val)
+{
+	return val->m_str;
+}
+
+data_type parseNSData(const NSPlistData* val)
+{
+	return val->m_data;
+}
+
+array_type parseNSArray(const NSPlistArray* val)
+{
+	array_type array;
+
+	NSPlistValueArray::const_iterator aIt = val->m_array.begin();
+	NSPlistValueArray::const_iterator aEnd = val->m_array.end();
+	for (; aIt != aEnd; aIt++)
+		array.push_back(parseNS(*aIt));
+
+	return array;
+}
+
+dictionary_type parseNSDictionary(const NSPlistDictionary* val)
+{
+	dictionary_type dict;
+
+	NSPlistValueDict::const_iterator dIt = val->m_dict.begin();
+	NSPlistValueDict::const_iterator dEnd = val->m_dict.end();
+	for (; dIt != dEnd; dIt++)
+		dict[dIt->first] = parseNS(dIt->second);
+
+	return dict;
 }
 
 dictionary_type parseDictionary(pugi::xml_node& node)

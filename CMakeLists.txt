@@ -7,8 +7,9 @@ option(PLIST_BUILD_TESTS "Build and run tests" OFF)
 set(BUILD_DEFINES "-DPUGIXML_NO_EXCEPTIONS=1")
 
 add_subdirectory(third-party/pugixml/scripts)
+add_subdirectory(third-party/NSPlist)
 
-include_directories(third-party third-party/pugixml/src)
+include_directories(third-party third-party/pugixml/src third-party/NSPlist/src)
 IF(MSVC)
 	include_directories(${CMAKE_SOURCE_DIR}/Windows/include)
 ENDIF()
@@ -32,7 +33,7 @@ IF(PLIST_BUILD_TESTS)
 	ENDIF()
 
 	add_executable(runTests src/runTests.cpp src/plistTests.cpp)
-	target_link_libraries(runTests PlistCpp pugixml UnitTest++)
+	target_link_libraries(runTests PlistCpp pugixml UnitTest++ NSPlist)
 
 	ADD_CUSTOM_COMMAND(
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

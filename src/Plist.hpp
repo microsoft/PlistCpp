@@ -49,8 +49,12 @@ namespace Plist
 		typedef std::vector<char>                    data_type;
 		typedef bool                                 boolean_type;
 
-		// Public read methods.  Plist type (binary or xml) automatically detected.
+		// Public read methods.  Plist type (binary, xml or NextStep) automatically detected.
 
+		/*
+		 * For parsing of NextStep, byteArray must be double NULL terminated
+		 * and size should not count the terminating characters.
+		 */
 		void readPlist(const char* byteArrayTemp, int64_t size, boost::any& message);
 		void readPlist(std::istream& stream, boost::any& message);
 		void readPlist(const char* filename, boost::any& message);
