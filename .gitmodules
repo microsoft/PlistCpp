@@ -1,0 +1,6 @@
+[submodule "third-party/pugixml"]
+	path = third-party/pugixml
+	url = https://github.com/zeux/pugixml.git
+[submodule "third-party/unittest-cpp"]
+	path = third-party/unittest-cpp
+	url = https://github.com/unittest-cpp/unittest-cpp.git
