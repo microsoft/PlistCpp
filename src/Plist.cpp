@@ -161,6 +161,12 @@ namespace Plist {
 		std::string parseNSString(const NSPlistString* val);
 		boost::any parseNS(const NSPlistValue* val);
 
+		// NextStep writing
+
+		NSPlistValue* writeNSNode(const boost::any& obj);
+		NSPlistValue* writeNSArray(const array_type& array);
+		NSPlistValue* writeNSDictionary(const dictionary_type& dict);
+
 } // namespace Plist
 
 namespace Plist {
@@ -309,6 +315,61 @@ void writePlistBinary(
 	d._objectTable.insert(d._objectTable.end(), temp.rbegin(), temp.rend());
 }
 
+NSPlistValue* writeNSArray(const array_type& array)
+{
+	NSPlistArray* arrayNode = new NSPlistArray();
+	for (array_type::const_iterator it = array.begin();	it != array.end(); ++it)
+		arrayNode->insert(writeNSNode(*it));
+
+	return arrayNode;
+}
+
+NSPlistValue* writeNSDictionary(const dictionary_type& dict)
+{
+	NSPlistDictionary* dictNode = new NSPlistDictionary();
+	for (dictionary_type::const_iterator it = dict.begin(); it != dict.end(); ++it)
+		dictNode->insert(it->first, writeNSNode(it->second));
+
+	return dictNode;
+}
+
+NSPlistValue* writeNSNode(const boost::any& obj)
+{
+	NSPlistValue* ret = NULL;
+	const std::type_info &objType = obj.type();
+
+	if(objType == typeid(int32_t))
+		ret = new NSPlistString(stringFromValue(boost::any_cast<const int32_t&>(obj)), NSPlistIntegerString);
+	else if(objType == typeid(int64_t))
+		ret = new NSPlistString(stringFromValue(boost::any_cast<const int64_t&>(obj)), NSPlistIntegerString);
+	else if(objType == typeid(long))
+		ret = new NSPlistString(stringFromValue(boost::any_cast<const long&>(obj)), NSPlistIntegerString);
+	else if(objType == typeid(short))
+		ret = new NSPlistString(stringFromValue(boost::any_cast<const short&>(obj)), NSPlistIntegerString);
+	else if(objType == typeid(dictionary_type))
+		writeNSDictionary(boost::any_cast<const dictionary_type&>(obj));
+	else if(objType == typeid(string_type))
+		ret = new NSPlistString(boost::any_cast<const string_type&>(obj), NSPlistStringString);
+	else if(objType == typeid(array_type))
+		writeNSArray(boost::any_cast<const array_type&>(obj));
+	else if(objType == typeid(double))
+		ret = new NSPlistString(stringFromValue(boost::any_cast<const double&>(obj)), NSPlistRealString);
+	else if(objType == typeid(float))
+		ret = new NSPlistString(stringFromValue(boost::any_cast<const float&>(obj)), NSPlistRealString);
+	else if(objType == typeid(Date))
+		ret = new NSPlistString(boost::any_cast<const Date&>(obj).timeAsXMLConvention(), NSPlistDateString);
+	else if(objType == typeid(bool))
+		ret = new NSPlistString(boost::any_cast<const bool&>(obj) ? "YES" : "NO", NSPlistBoolString);
+	else if(objType == typeid(data_type))
+	{
+		NSPlistData* dataNode = new NSPlistData();
+		dataNode->insert(boost::any_cast<const data_type&>(obj));
+		ret = dataNode;
+	}
+	else
+		throw Error((std::string("Plist Error: Can't serialize type ") + objType.name()).c_str());
+}
+
 void writePlistBinary(std::vector<char>& plist, const boost::any& message)
 {
 	PlistHelperData d;
@@ -383,6 +444,36 @@ void writePlistXML(
 {
 	std::ofstream stream(filename, std::ios::binary);
 	writePlistXML(stream, message);
+	stream.close();
+}
+#endif
+
+void writePlistNS(
+		std::ostream& stream,
+		const boost::any& message)
+{
+	NSPlistValue* plistRoot = writeNSNode(message);
+	plistRoot->write(stream);
+	delete plistRoot;
+}
+
+void writePlistNS(
+		const char* filename,
+		const boost::any& message)
+{
+
+	std::ofstream stream(filename, std::ios::binary);
+	writePlistNS(stream, message);
+	stream.close();
+}
+
+#if defined(_MSC_VER)
+void writePlistNS(
+		const wchar_t* filename,
+		const boost::any& message)
+{
+	std::ofstream stream(filename, std::ios::binary);
+	writePlistNS(stream, message);
 	stream.close();
 }
 #endif

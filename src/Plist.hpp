@@ -88,6 +88,15 @@ namespace Plist
 		void writePlistXML(const wchar_t* filename, const boost::any& message);
 #endif
 
+		// Public NextStep write methods.
+
+		void writePlistNS(std::ostream& stream, const boost::any& message);
+		void writePlistNS(std::vector<char>& plist, const boost::any& message);
+		void writePlistNS(const char* filename, const boost::any& message);
+#if defined(_MSC_VER)
+		void writePlistNS(const wchar_t* filename, const boost::any& message);
+#endif
+
 		class Error: public std::runtime_error {
 			public:
 #if __cplusplus >= 201103L
