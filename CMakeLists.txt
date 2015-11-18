@@ -3,9 +3,6 @@ project (Plist)
 
 option(PLIST_BUILD_TESTS "Build and run tests" OFF)
 
-# Disable exceptions in pugixml
-set(BUILD_DEFINES "-DPUGIXML_NO_EXCEPTIONS=1")
-
 add_subdirectory(third-party/pugixml/scripts)
 add_subdirectory(third-party/NSPlist)
 
@@ -19,6 +16,9 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${EXTRA_CXX_FLAGS} -Wall
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${EXTRA_CXX_FLAGS} -Wall -DTEST_VERBOSE")
 
 add_library(PlistCpp src/Plist.cpp src/PlistDate.cpp)
+
+# Disable exceptions in pugixml
+target_compile_definitions(PlistCpp PUBLIC PUGIXML_NO_EXCEPTIONS)
 
 IF(PLIST_BUILD_TESTS)
 	add_subdirectory(third-party/unittest-cpp)
